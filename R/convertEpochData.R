@@ -471,7 +471,13 @@ convertEpochData = function(datadir = c(), metadatadir = c(),
       } else {
         M$metashort = as.data.frame(cbind(time_shortEp_8601,
                                           D[1:length(time_shortEp_8601), ]))
-        colnames(M$metashort) = c("timestamp", colnames(D))
+        cn = c("timestamp", colnames(D))
+        # Guard against missing/blank column names in epoch input
+        bad = is.na(cn) | cn == ""
+        if (any(bad)) {
+          cn[bad] = paste0("unnamed_", seq_len(sum(bad)))
+        }
+        colnames(M$metashort) = cn
         for (ic in 2:ncol(M$metashort)) {
           M$metashort[, ic] <- as.numeric(M$metashort[, ic])
         }
