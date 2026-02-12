@@ -125,6 +125,19 @@ g.part2 = function(datadir = c(), metadatadir = c(), f0 = c(), f1 = c(),
       # convert to character/numeric if stored as factor in metashort and metalong
       M$metashort = correctOlderMilestoneData(M$metashort)
       M$metalong = correctOlderMilestoneData(M$metalong)
+      # Guard against missing/blank column names in legacy or external-epoch inputs
+      cn_short = names(M$metashort)
+      bad_short = is.na(cn_short) | cn_short == ""
+      if (any(bad_short)) {
+        cn_short[bad_short] = paste0("unnamed_", seq_len(sum(bad_short)))
+        names(M$metashort) = cn_short
+      }
+      cn_long = names(M$metalong)
+      bad_long = is.na(cn_long) | cn_long == ""
+      if (any(bad_long)) {
+        cn_long[bad_long] = paste0("unnamed_", seq_len(sum(bad_long)))
+        names(M$metalong) = cn_long
+      }
       # extract ID centrally to be used in GGIR
       if (is.null(I$sf)) {
         M$filecorrupt = TRUE
