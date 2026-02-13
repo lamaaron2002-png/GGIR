@@ -323,6 +323,58 @@ convertEpochData = function(datadir = c(), metadatadir = c(),
                                          desiredtz = params_general[["desiredtz"]],
                                          configtz = params_general[["configtz"]],
                                          timeformatName = "extEpochData_timeformat")
+        # Fallback for simple actiwatch CSV files with columns like:
+        # Epoch, Date, Time, Activity, Light
+        if (params_general[["dataFormat"]] == "actiwatch_csv") {
+          bad_names = is.null(colnames(D$data)) || all(is.na(colnames(D$data))) || all(colnames(D$data) == "")
+          missing_extact = is.null(D$data) || !("ExtAct" %in% colnames(D$data))
+          missing_light = is.null(D_extraVars) || !("light" %in% colnames(D_extraVars))
+          if (bad_names || missing_extact || missing_light) {
+            raw = tryCatch(data.table::fread(input = fnames[i], data.table = FALSE), error = function(e) NULL)
+            if (!is.null(raw) && nrow(raw) > 1) {
+              raw_names = tolower(names(raw))
+              # Parse timestamps from Date + Time or Timestamp columns if present
+              timestamp_POSIX = NULL
+              if (all(c("date", "time") %in% raw_names)) {
+                date_col = names(raw)[which(raw_names == "date")[1]]
+                time_col = names(raw)[which(raw_names == "time")[1]]
+                dt_str = paste(raw[[date_col]], raw[[time_col]])
+                timestamp_POSIX = as.POSIXct(dt_str,
+                                             format = params_general[["extEpochData_timeformat"]],
+                                             tz = params_general[["desiredtz"]])
+              } else if ("timestamp" %in% raw_names) {
+                ts_col = names(raw)[which(raw_names == "timestamp")[1]]
+                timestamp_POSIX = as.POSIXct(raw[[ts_col]],
+                                             format = params_general[["extEpochData_timeformat"]],
+                                             tz = params_general[["desiredtz"]])
+              }
+              if (!is.null(timestamp_POSIX) && length(timestamp_POSIX) > 1 && !all(is.na(timestamp_POSIX))) {
+                D$epochSize = as.numeric(difftime(timestamp_POSIX[2], timestamp_POSIX[1], units = "secs"))
+                D$startTime = timestamp_POSIX[1]
+              }
+              # Map activity/counts to ExtAct
+              if (missing_extact) {
+                act_idx = which(raw_names %in% c("activity", "counts", "extact"))
+                if (length(act_idx) > 0) {
+                  D$data = data.frame(ExtAct = as.numeric(raw[[act_idx[1]]]),
+                                      stringsAsFactors = FALSE)
+                }
+              }
+              # Capture light if present
+              if (missing_light) {
+                light_idx = which(raw_names == "light")
+                if (length(light_idx) > 0) {
+                  D_extraVars = data.frame(light = as.numeric(raw[[light_idx[1]]]),
+                                           stringsAsFactors = FALSE)
+                }
+              }
+            }
+            # Last-resort: if there is still a single unnamed column, treat it as ExtAct
+            if (missing_extact && !is.null(D$data) && ncol(D$data) >= 1) {
+              colnames(D$data)[1] = "ExtAct"
+            }
+          }
+        }
         # Rename to align with GGIR metric naming
         colnames(D$data)[which(colnames(D$data) == "counts")] = "ExtAct"
         # Normalize light/nonwear column names for downstream handling
