@@ -325,6 +325,14 @@ convertEpochData = function(datadir = c(), metadatadir = c(),
                                          timeformatName = "extEpochData_timeformat")
         # Rename to align with GGIR metric naming
         colnames(D$data)[which(colnames(D$data) == "counts")] = "ExtAct"
+        # Normalize light/nonwear column names for downstream handling
+        cn_lower = tolower(colnames(D$data))
+        if (any(cn_lower == "light")) {
+          colnames(D$data)[which(cn_lower == "light")] = "light"
+        }
+        if (any(cn_lower == "nonwear")) {
+          colnames(D$data)[which(cn_lower == "nonwear")] = "nonwear"
+        }
         extraVars  = grep(pattern = "light|nonwear", x = colnames(D$data))
         if (length(extraVars) > 0) {
           # split the extraVars
