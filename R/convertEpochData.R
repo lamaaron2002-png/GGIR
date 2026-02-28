@@ -327,23 +327,32 @@ convertEpochData = function(datadir = c(), metadatadir = c(),
         # Epoch, Date, Time, Activity, Light
         if (params_general[["dataFormat"]] == "actiwatch_csv") {
           bad_names = is.null(colnames(D$data)) || all(is.na(colnames(D$data))) || all(colnames(D$data) == "")
-          missing_extact = is.null(D$data) || !("ExtAct" %in% colnames(D$data))
-          missing_light = is.null(D_extraVars) || !("light" %in% colnames(D_extraVars))
+          cn_norm = c()
+          if (!is.null(D$data)) {
+            cn_norm = tolower(gsub("[._]+", " ", colnames(D$data)))
+            cn_norm = gsub("\\s+", " ", trimws(cn_norm))
+          }
+          act_like = length(cn_norm) > 0 && any(cn_norm %in% c("activity", "counts", "extact"))
+          light_like = length(cn_norm) > 0 && any(cn_norm %in% c("light", "white light", "whitelight"))
+          missing_extact = is.null(D$data) || !act_like
+          missing_light = is.null(D$data) || !light_like
           if (bad_names || missing_extact || missing_light) {
             raw = tryCatch(data.table::fread(input = fnames[i], data.table = FALSE), error = function(e) NULL)
             if (!is.null(raw) && nrow(raw) > 1) {
               raw_names = tolower(names(raw))
+              raw_norm = gsub("[._]+", " ", raw_names)
+              raw_norm = gsub("\\s+", " ", trimws(raw_norm))
               # Parse timestamps from Date + Time or Timestamp columns if present
               timestamp_POSIX = NULL
-              if (all(c("date", "time") %in% raw_names)) {
-                date_col = names(raw)[which(raw_names == "date")[1]]
-                time_col = names(raw)[which(raw_names == "time")[1]]
+              if (all(c("date", "time") %in% raw_norm)) {
+                date_col = names(raw)[which(raw_norm == "date")[1]]
+                time_col = names(raw)[which(raw_norm == "time")[1]]
                 dt_str = paste(raw[[date_col]], raw[[time_col]])
                 timestamp_POSIX = as.POSIXct(dt_str,
                                              format = params_general[["extEpochData_timeformat"]],
                                              tz = params_general[["desiredtz"]])
-              } else if ("timestamp" %in% raw_names) {
-                ts_col = names(raw)[which(raw_names == "timestamp")[1]]
+              } else if ("timestamp" %in% raw_norm) {
+                ts_col = names(raw)[which(raw_norm == "timestamp")[1]]
                 timestamp_POSIX = as.POSIXct(raw[[ts_col]],
                                              format = params_general[["extEpochData_timeformat"]],
                                              tz = params_general[["desiredtz"]])
@@ -354,7 +363,7 @@ convertEpochData = function(datadir = c(), metadatadir = c(),
               }
               # Map activity/counts to ExtAct
               if (missing_extact) {
-                act_idx = which(raw_names %in% c("activity", "counts", "extact"))
+                act_idx = which(raw_norm %in% c("activity", "counts", "extact"))
                 if (length(act_idx) > 0) {
                   D$data = data.frame(ExtAct = as.numeric(raw[[act_idx[1]]]),
                                       stringsAsFactors = FALSE)
@@ -362,7 +371,7 @@ convertEpochData = function(datadir = c(), metadatadir = c(),
               }
               # Capture light if present
               if (missing_light) {
-                light_idx = which(raw_names == "light")
+                light_idx = which(raw_norm %in% c("light", "white light", "whitelight"))
                 if (length(light_idx) > 0) {
                   D_extraVars = data.frame(light = as.numeric(raw[[light_idx[1]]]),
                                            stringsAsFactors = FALSE)
@@ -375,15 +384,18 @@ convertEpochData = function(datadir = c(), metadatadir = c(),
             }
           }
         }
-        # Rename to align with GGIR metric naming
-        colnames(D$data)[which(colnames(D$data) == "counts")] = "ExtAct"
-        # Normalize light/nonwear column names for downstream handling
-        cn_lower = tolower(colnames(D$data))
-        if (any(cn_lower == "light")) {
-          colnames(D$data)[which(cn_lower == "light")] = "light"
-        }
-        if (any(cn_lower == "nonwear")) {
-          colnames(D$data)[which(cn_lower == "nonwear")] = "nonwear"
+        # Normalize activity/light/nonwear column names for downstream handling
+        if (!is.null(D$data) && ncol(D$data) > 0) {
+          cn = colnames(D$data)
+          cn_norm = tolower(gsub("[._]+", " ", cn))
+          cn_norm = gsub("\\s+", " ", trimws(cn_norm))
+          act_idx = which(cn_norm %in% c("activity", "counts", "extact"))
+          if (length(act_idx) > 0) cn[act_idx] = "ExtAct"
+          light_idx = which(cn_norm %in% c("light", "white light", "whitelight"))
+          if (length(light_idx) > 0) cn[light_idx] = "light"
+          nonwear_idx = which(cn_norm %in% c("nonwear", "non wear", "non-wear"))
+          if (length(nonwear_idx) > 0) cn[nonwear_idx] = "nonwear"
+          colnames(D$data) = cn
         }
         extraVars  = grep(pattern = "light|nonwear", x = colnames(D$data))
         if (length(extraVars) > 0) {
