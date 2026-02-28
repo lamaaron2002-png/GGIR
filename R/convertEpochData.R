@@ -338,6 +338,21 @@ convertEpochData = function(datadir = c(), metadatadir = c(),
           missing_light = is.null(D$data) || !light_like
           if (bad_names || missing_extact || missing_light) {
             raw = tryCatch(data.table::fread(input = fnames[i], data.table = FALSE), error = function(e) NULL)
+            # If this is an Actiware export with a long preamble, detect the header row and re-read
+            if (is.null(raw) || ncol(raw) <= 1) {
+              lines = tryCatch(readLines(fnames[i], n = 2000, warn = FALSE), error = function(e) NULL)
+              if (!is.null(lines)) {
+                header_hits = which(grepl("Line", lines) &
+                                    grepl("Date", lines) &
+                                    grepl("Time", lines) &
+                                    grepl("Activity", lines))
+                if (length(header_hits) > 0) {
+                  raw = tryCatch(data.table::fread(input = fnames[i],
+                                                   skip = header_hits[1] - 1,
+                                                   data.table = FALSE), error = function(e) NULL)
+                }
+              }
+            }
             if (!is.null(raw) && nrow(raw) > 1) {
               raw_names = tolower(names(raw))
               raw_norm = gsub("[._]+", " ", raw_names)
