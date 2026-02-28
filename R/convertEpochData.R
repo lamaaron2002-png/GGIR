@@ -326,76 +326,61 @@ convertEpochData = function(datadir = c(), metadatadir = c(),
         # Fallback for simple actiwatch CSV files with columns like:
         # Epoch, Date, Time, Activity, Light
         if (params_general[["dataFormat"]] == "actiwatch_csv") {
-          bad_names = is.null(colnames(D$data)) || all(is.na(colnames(D$data))) || all(colnames(D$data) == "")
-          cn_norm = c()
-          if (!is.null(D$data)) {
-            cn_norm = tolower(gsub("[._]+", " ", colnames(D$data)))
-            cn_norm = gsub("\\s+", " ", trimws(cn_norm))
+          raw = tryCatch(data.table::fread(input = fnames[i], data.table = FALSE), error = function(e) NULL)
+          # If this is an Actiware export with a long preamble, detect the header row and re-read
+          if (is.null(raw) || ncol(raw) <= 1) {
+            lines = tryCatch(readLines(fnames[i], n = 2000, warn = FALSE), error = function(e) NULL)
+            if (!is.null(lines)) {
+              header_hits = which(grepl("Line", lines) &
+                                  grepl("Date", lines) &
+                                  grepl("Time", lines) &
+                                  grepl("Activity", lines))
+              if (length(header_hits) > 0) {
+                raw = tryCatch(data.table::fread(input = fnames[i],
+                                                 skip = header_hits[1] - 1,
+                                                 data.table = FALSE), error = function(e) NULL)
+              }
+            }
           }
-          act_like = length(cn_norm) > 0 && any(cn_norm %in% c("activity", "counts", "extact"))
-          light_like = length(cn_norm) > 0 && any(cn_norm %in% c("light", "white light", "whitelight"))
-          missing_extact = is.null(D$data) || !act_like
-          missing_light = is.null(D$data) || !light_like
-          if (bad_names || missing_extact || missing_light) {
-            raw = tryCatch(data.table::fread(input = fnames[i], data.table = FALSE), error = function(e) NULL)
-            # If this is an Actiware export with a long preamble, detect the header row and re-read
-            if (is.null(raw) || ncol(raw) <= 1) {
-              lines = tryCatch(readLines(fnames[i], n = 2000, warn = FALSE), error = function(e) NULL)
-              if (!is.null(lines)) {
-                header_hits = which(grepl("Line", lines) &
-                                    grepl("Date", lines) &
-                                    grepl("Time", lines) &
-                                    grepl("Activity", lines))
-                if (length(header_hits) > 0) {
-                  raw = tryCatch(data.table::fread(input = fnames[i],
-                                                   skip = header_hits[1] - 1,
-                                                   data.table = FALSE), error = function(e) NULL)
-                }
+          if (!is.null(raw) && nrow(raw) > 1) {
+            raw_names = tolower(names(raw))
+            raw_norm = gsub("[._]+", " ", raw_names)
+            raw_norm = gsub("\\s+", " ", trimws(raw_norm))
+            # Parse timestamps from Date + Time or Timestamp columns if present
+            timestamp_POSIX = NULL
+            if (all(c("date", "time") %in% raw_norm)) {
+              date_col = names(raw)[which(raw_norm == "date")[1]]
+              time_col = names(raw)[which(raw_norm == "time")[1]]
+              dt_str = paste(raw[[date_col]], raw[[time_col]])
+              timestamp_POSIX = as.POSIXct(dt_str,
+                                           format = params_general[["extEpochData_timeformat"]],
+                                           tz = params_general[["desiredtz"]])
+            } else if ("timestamp" %in% raw_norm) {
+              ts_col = names(raw)[which(raw_norm == "timestamp")[1]]
+              timestamp_POSIX = as.POSIXct(raw[[ts_col]],
+                                           format = params_general[["extEpochData_timeformat"]],
+                                           tz = params_general[["desiredtz"]])
+            }
+            if (!is.null(timestamp_POSIX) && length(timestamp_POSIX) > 1 && !all(is.na(timestamp_POSIX))) {
+              D$epochSize = as.numeric(difftime(timestamp_POSIX[2], timestamp_POSIX[1], units = "secs"))
+              D$startTime = timestamp_POSIX[1]
+            }
+            # Map activity/counts to ExtAct if present
+            act_idx = which(raw_norm %in% c("activity", "counts", "extact"))
+            if (length(act_idx) > 0) {
+              D$data = data.frame(ExtAct = as.numeric(raw[[act_idx[1]]]),
+                                  stringsAsFactors = FALSE)
+              # Map sleep/wake if present
+              sleep_idx = which(raw_norm %in% c("sleep/wake", "sleep wake", "sleep_wake", "sleepwake"))
+              if (length(sleep_idx) > 0) {
+                D$data$ExtSleep = as.numeric(raw[[sleep_idx[1]]])
               }
             }
-            if (!is.null(raw) && nrow(raw) > 1) {
-              raw_names = tolower(names(raw))
-              raw_norm = gsub("[._]+", " ", raw_names)
-              raw_norm = gsub("\\s+", " ", trimws(raw_norm))
-              # Parse timestamps from Date + Time or Timestamp columns if present
-              timestamp_POSIX = NULL
-              if (all(c("date", "time") %in% raw_norm)) {
-                date_col = names(raw)[which(raw_norm == "date")[1]]
-                time_col = names(raw)[which(raw_norm == "time")[1]]
-                dt_str = paste(raw[[date_col]], raw[[time_col]])
-                timestamp_POSIX = as.POSIXct(dt_str,
-                                             format = params_general[["extEpochData_timeformat"]],
-                                             tz = params_general[["desiredtz"]])
-              } else if ("timestamp" %in% raw_norm) {
-                ts_col = names(raw)[which(raw_norm == "timestamp")[1]]
-                timestamp_POSIX = as.POSIXct(raw[[ts_col]],
-                                             format = params_general[["extEpochData_timeformat"]],
-                                             tz = params_general[["desiredtz"]])
-              }
-              if (!is.null(timestamp_POSIX) && length(timestamp_POSIX) > 1 && !all(is.na(timestamp_POSIX))) {
-                D$epochSize = as.numeric(difftime(timestamp_POSIX[2], timestamp_POSIX[1], units = "secs"))
-                D$startTime = timestamp_POSIX[1]
-              }
-              # Map activity/counts to ExtAct
-              if (missing_extact) {
-                act_idx = which(raw_norm %in% c("activity", "counts", "extact"))
-                if (length(act_idx) > 0) {
-                  D$data = data.frame(ExtAct = as.numeric(raw[[act_idx[1]]]),
-                                      stringsAsFactors = FALSE)
-                }
-              }
-              # Capture light if present
-              if (missing_light) {
-                light_idx = which(raw_norm %in% c("light", "white light", "whitelight"))
-                if (length(light_idx) > 0) {
-                  D_extraVars = data.frame(light = as.numeric(raw[[light_idx[1]]]),
-                                           stringsAsFactors = FALSE)
-                }
-              }
-            }
-            # Last-resort: if there is still a single unnamed column, treat it as ExtAct
-            if (missing_extact && !is.null(D$data) && ncol(D$data) >= 1) {
-              colnames(D$data)[1] = "ExtAct"
+            # Capture light if present (e.g., "White Light")
+            light_idx = which(raw_norm %in% c("light", "white light", "whitelight"))
+            if (length(light_idx) > 0) {
+              D_extraVars = data.frame(light = as.numeric(raw[[light_idx[1]]]),
+                                       stringsAsFactors = FALSE)
             }
           }
         }
