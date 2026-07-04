@@ -11,14 +11,14 @@ test_that("load_params can load parameters", {
   
   # Test length of objects
   expect_equal(length(params), 8)
-  expect_equal(length(params$params_sleep), 35)
+  expect_equal(length(params$params_sleep), 43)
   expect_equal(length(params$params_metrics), 41)
   expect_equal(length(params$params_rawdata), 39)
-  expect_equal(length(params$params_247), 25)
+  expect_equal(length(params$params_247), 26)
   expect_equal(length(params$params_cleaning), 28)
   expect_equal(length(params$params_phyact), 14)
-  expect_equal(length(params$params_output), 27)
-  expect_equal(length(params$params_general), 21)
+  expect_equal(length(params$params_output), 29)
+  expect_equal(length(params$params_general), 22)
 
   params_sleep = params$params_sleep
   params_metrics = params$params_metrics
@@ -53,6 +53,12 @@ test_that("load_params can load parameters", {
   
   # change HASPT algo to "notused" if length(def.noc.sleep) == 2
   params_sleep$def.noc.sleep = c(21, 8)
+  check = check_params(params_sleep = params_sleep)
+  expect_equal(check$params_sleep$HASPT.algo, "notused")
+  params_sleep = params$params_sleep
+
+  # CATigraphy may explicitly disable accelerometer-derived sleep-window guidance.
+  params_sleep$HASPT.algo = "notused"
   check = check_params(params_sleep = params_sleep)
   expect_equal(check$params_sleep$HASPT.algo, "notused")
   params_sleep = params$params_sleep

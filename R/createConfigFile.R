@@ -60,7 +60,8 @@ createConfigFile = function(config.parameters = c(), GGIRversion = "") {
                            "do.imp", "epochvalues2csv", "mvpadur",
                            "dayborder", "closedbout",
                            "IVIS_windowsize_minutes", "IVIS_epochsize_seconds", "iglevels",
-                           "IVIS.activity.metric", "TimeSegments2ZeroFile", "qM5L5", "do.part3.pdf") ==  TRUE) {
+                           "IVIS.activity.metric", "TimeSegments2ZeroFile",
+                           "TimeSegments2ExcludeFile", "qM5L5", "do.part3.pdf") ==  TRUE) {
         out[i,3] = "Study design, Parameters descriptive analysis"
       } else if (NM %in% c("anglethreshold", "timethreshold",
                            "ignorenonwear", "constrain2range", "sensor.location") == TRUE) {

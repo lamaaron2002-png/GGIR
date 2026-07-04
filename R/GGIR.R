@@ -237,8 +237,6 @@ GGIR = function(mode = 1:5, datadir = c(), outputdir = c(),
   }
   if (verbose == TRUE) {
     cat(paste0("\n   GGIR version: ",GGIRversion,"\n"))
-    cat(paste0("\n   This is a forked version of GGIR, designed for use in the Healthy Brain Ageing Program as we have converted Geneactivs into count data."))
-    cat(paste0("\n   If you have any questions about this forked version, please contact Aaron Lam at aaron.lam@sydney.edu.au"))
     cat("\n   << Please cite GGIR in your publications with doi: 10.5281/zenodo.1051064 >>\n")
     random_message = sample(x = 1:3, size = 1)
     cat(paste0("\n   [Note #", random_message, "]"))
@@ -424,7 +422,6 @@ GGIR = function(mode = 1:5, datadir = c(), outputdir = c(),
         store.long = FALSE
       }
       g.report.part2(metadatadir = metadatadir, f0 = f0, f1 = f1,
-                     maxdur = params_cleaning[["maxdur"]],
                      store.long = store.long, params_output,
                      verbose = verbose, desiredtz = params_general[["desiredtz"]])
     }
@@ -505,5 +502,13 @@ GGIR = function(mode = 1:5, datadir = c(), outputdir = c(),
                 verbose = TRUE)
       }
     }
+  }
+  if (isTRUE(params_output[["save_dashboard_parquet"]])) {
+    if (verbose == TRUE) print_console_header("Dashboard Parquet export")
+    write_dashboard_parquet(metadatadir = metadatadir,
+                            params_output = params_output,
+                            params_general = params_general,
+                            params_phyact = params_phyact,
+                            verbose = verbose)
   }
 }

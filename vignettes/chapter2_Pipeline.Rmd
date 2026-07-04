@@ -51,7 +51,7 @@ The specific order and content of the parts is a result of how GGIR evolved over
 
 #### Milestone data
 
-Each part, when run, stores its output in an R-data file that has `.RData` as its extension, which we refer to as the milestone data. As user, you are unlikely to ever need to interact directly with the milestone data files because all relevant output for you is stored in csv and pdf files in the output folder `results`.
+Each part, when run, stores its output in an R-data file that has `.RData` as its extension, which we refer to as the milestone data. As user, you are unlikely to ever need to interact directly with the milestone data files because all relevant output for you is stored in csv, png and pdf files in the output folder `results`.
 
 The milestone files are read by the next GGIR part. The advantage of this design is that it offers internal modularity. For example, we can run part 1 now and continue with part 2 another time without having to repeat part 1 again. So, this design eases re-processing and is also helpful when developing and testing the GGIR code.
 
@@ -122,7 +122,9 @@ All parameters are accepted as parameter to function `GGIR`, because `GGIR` is l
 
 #### Configuration file.
 
-GGIR stores all the parameter values in a csv-file named config.csv. The file is stored after each run of GGIR in the root of the output folder, overwriting any existing config.csv file. So, if you would like to add annotations in the file, e.g. in the fourth column, then you will need to store it somewhere outside the output folder and specify the path to that file with parameter `configfile`. Note that parameters `datadir` and `outputdir`discussed below always need to be specified directly and are not part of the configfile.
+GGIR automatically stores all its parameter settings in a csv-file named config.csv. The file is stored after each run of GGIR in the root of the output folder, overwriting any existing config.csv file. So, it acts as log of how GGIR was configured during the most recent run.
+
+One practical value of the configuration file is that you can share it with others such that they can replicate your analyses via GGIR parameter `configfile`. The code below shows an example where `"D:/myconfigfiles/config.csv"` is used as configuration file. Note that parameters `datadir` and `outputdir` discussed below are stored in the configuration file but always need to be specified directly in R code as they are never extracted from the configuration file.
 
 ```{R,eval=FALSE}
 library(GGIR)
@@ -131,7 +133,7 @@ GGIR(datadir = "C:/mystudy/mydata",
      configfile = "D:/myconfigfiles/config.csv")
 ```
 
-The practical value of this is that it eases the replication of the analysis, because instead of having to share you R script with colleagues, sharing your config.csv file will be sufficient. Please make sure you have the same GGIR and R version installed when using this for reproducibility. See [here](https://wadpac.github.io/GGIR/articles/chapter0_Installation.html) for guidance on how to install older package versions.
+Be aware that, to replicate GGIR analysis, one should also make sure that consistent GGIR and R versions are used. See [here](https://wadpac.github.io/GGIR/articles/chapter0_Installation.html) for guidance on how to install older package versions.
 
 #### Parameter extraction order
 
@@ -158,7 +160,7 @@ GGIR currently works with the following accelerometer brands and formats:
 -   [Axivity](https://axivity.com/) AX3 and AX6 .cwa
 -   [ActiGraph](https://theactigraph.com) .csv and .gt3x (.gt3x only the newer format generated with firmware versions above 2.5.0. Serial numbers that start with “NEO” or “MRA” and have firmware version of 2.5.0 or earlier use an older format of the .gt3x file). If you want to work with .csv exports via the commercial ActiLife software, then note that you have the option to export data with timestamps, which should be turned off. To cope with the absence of timestamps GGIR will calculate timestamps from the sample frequency, the start time, and start date as presented in the file header.
 -   [Movisens](https://www.movisens.com/en/) with data stored in folders.
--   [Parmay Matrix](https://www.parmaytech.com/) .bin and .BIN
+-   [Parmay Matrix](https://www.matrixwearable.net/) .bin and .BIN
 -   Any other accelerometer brand that generates csv output, see documentation for functions `read.myacc.csv` and parameter `rmc.noise` in the vignette [Reading csv files with raw data in GGIR](https://cran.r-project.org/package=GGIR/vignettes/readmyacccsv.html).
 
 ### Externally derived epoch-level data
@@ -394,13 +396,13 @@ GGIR generates reports in the parts 2, 4, 5, and 6 of the pipeline. With paramet
 
 ***Output files in results/QC subfolder:***
 
-| File path                                                | Resolution                                                       | GGIR part |
-|--------------------------------------|-----------------|-----------------|
-| data_quality_report.csv                       | one row per recording                                            | 5         |
-| part4_summary_sleep_full.csv                  | one row per recording                                            | 4         |
-| part4_nightsummary_sleep_full.csv             | one row per night                                                | 4         |
-| part5_daysummary_full_WW_L40M100V400_T5A5.csv | one row per day                                                  | 5         |
-| plots_to_check_data_quality_1.pdf             | one recording per page                                           | 2         |
+| File path                                     | Resolution             | GGIR part |
+|-----------------------------------------------|------------------------|-----------|
+| data_quality_report.csv                       | one row per recording  | 5         |
+| part4_summary_sleep_full.csv                  | one row per recording  | 4         |
+| part4_nightsummary_sleep_full.csv             | one row per night      | 4         |
+| part5_daysummary_full_WW_L40M100V400_T5A5.csv | one row per day        | 5         |
+| plots_part2 folder with .png files            | one recording per png  | 2         |
 
 : A detailed discussion of each output can be found in the other chapters.
 
