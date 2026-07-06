@@ -181,8 +181,10 @@ g.part4 = function(datadir = c(), metadatadir = c(), f0 = f0, f1 = f1,
   # =================================================================
   # start of loop through the
   # participants
+  errors = list()
   for (i in f0:f1) {
-    tail_expansion_log = NULL
+    tryCatch({
+      tail_expansion_log = NULL
     # decide whether file was processed before
     if (params_general[["overwrite"]] == TRUE) {
       skip = 0  # this will make that analyses is done regardless of whether it was done before
@@ -1209,7 +1211,21 @@ g.part4 = function(datadir = c(), metadatadir = c(), f0 = f0, f1 = f1,
         save(nightsummary, tail_expansion_log, GGIRversion, file = paste0(metadatadir, ms4.out, "/", fnames[i]))
       }
     }
+    }, error = function(e) {
+      if (params_general[["use_trycatch_serial"]] == TRUE) {
+        errors[[as.character(fnames[i])]] <<- conditionMessage(e)
+      } else {
+        stop(e)
+      }
+    })
   }  #end of loop through acc files
+  if (params_general[["use_trycatch_serial"]] == TRUE) {
+    writeCatigraphyPartErrors(errors, metadatadir, 4)
+    if (verbose == TRUE && length(errors) > 0) {
+      cat(paste0("\n\nErrors in part 4... for:"))
+      cat(paste0("\n-", names(errors), ": ", unlist(errors), collapse = ""))
+    }
+  }
   if (cnt67 == 2 & params_output[["do.visual"]] == TRUE) {
     if (cnt - 1 != (nnpp + 1)) {
       zerolabel = which(idlabels == 0)

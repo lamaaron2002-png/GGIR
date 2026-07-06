@@ -852,9 +852,27 @@ convertEpochData = function(datadir = c(), metadatadir = c(),
       }
     }
   } else {
+    errors = list()
     for (i in f0:f1) {
-      main_convert(i, fnames, metadatadir, params_general, I_bu,
-                   epSizeShort, epSizeLong, tz, verbose, M, C)
+      if (params_general[["use_trycatch_serial"]] == TRUE) {
+        tryCatch(
+          main_convert(i, fnames, metadatadir, params_general, I_bu,
+                       epSizeShort, epSizeLong, tz, verbose, M, C),
+          error = function(e) {
+            errors[[basename(as.character(fnames[i]))]] <<- conditionMessage(e)
+          }
+        )
+      } else {
+        main_convert(i, fnames, metadatadir, params_general, I_bu,
+                     epSizeShort, epSizeLong, tz, verbose, M, C)
+      }
+    }
+    if (params_general[["use_trycatch_serial"]] == TRUE) {
+      writeCatigraphyPartErrors(errors, metadatadir, 1)
+      if (verbose == TRUE && length(errors) > 0) {
+        cat(paste0("\n\nErrors in part 1... for:"))
+        cat(paste0("\n-", names(errors), ": ", unlist(errors), collapse = ""))
+      }
     }
   }
   

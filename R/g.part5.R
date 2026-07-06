@@ -61,6 +61,22 @@ g.part5 = function(datadir = c(), metadatadir = c(), f0=c(), f1=c(),
   #======================================================================
   # compile lists of milestone data filenames
   fnames.ms3 = dir(paste(metadatadir, "/meta/ms3.out", sep = ""))
+  participant_error_file = file.path(
+    metadatadir,
+    "results",
+    "catigraphy_participant_errors.csv"
+  )
+  if (file.exists(participant_error_file)) {
+    participant_errors = tryCatch(
+      data.table::fread(participant_error_file, data.table = FALSE),
+      error = function(...) NULL
+    )
+    if (!is.null(participant_errors) &&
+        all(c("file", "stage") %in% names(participant_errors))) {
+      failed_part4 = participant_errors$file[participant_errors$stage == "GGIR Part 4"]
+      fnames.ms3 = fnames.ms3[!fnames.ms3 %in% failed_part4]
+    }
+  }
   
   fnames.ms5 = dir(paste(metadatadir, "/meta/ms5.out", sep = ""))
   # path to sleeplog milestonedata, if it exists:
@@ -846,6 +862,9 @@ g.part5 = function(datadir = c(), metadatadir = c(), f0=c(), f1=c(),
         cat(paste0("\n\nErrors in part 5... for:"))
         cat(paste0("\n-", names(errors), ": ", unlist(errors), collapse = ""))
       }
+    }
+    if (params_general[["use_trycatch_serial"]] == TRUE) {
+      writeCatigraphyPartErrors(errors, metadatadir, 5)
     }
   }
 }

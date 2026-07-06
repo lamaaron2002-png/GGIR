@@ -467,5 +467,8 @@ g.part2 = function(datadir = c(), metadatadir = c(), f0 = c(), f1 = c(),
         cat(paste0("\n-", names(errors), ": ", unlist(errors), collapse = ""))
       }
     }
+    if (params_general[["use_trycatch_serial"]] == TRUE) {
+      writeCatigraphyPartErrors(errors, metadatadir, 2)
+    }
   }
 }
