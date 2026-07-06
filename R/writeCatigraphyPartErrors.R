@@ -3,12 +3,21 @@ writeCatigraphyPartErrors = function(errors, metadatadir, part) {
   if (!dir.exists(results_dir)) dir.create(results_dir, recursive = TRUE)
   output_file = file.path(results_dir, "catigraphy_participant_errors.csv")
   stage_name = paste0("GGIR Part ", part)
-  new_rows = data.frame(
-    file = names(errors),
-    stage = stage_name,
-    error = as.character(unlist(errors)),
-    stringsAsFactors = FALSE
-  )
+  if (length(errors) == 0) {
+    new_rows = data.frame(
+      file = character(),
+      stage = character(),
+      error = character(),
+      stringsAsFactors = FALSE
+    )
+  } else {
+    new_rows = data.frame(
+      file = names(errors),
+      stage = rep(stage_name, length(errors)),
+      error = as.character(unlist(errors)),
+      stringsAsFactors = FALSE
+    )
+  }
   if (file.exists(output_file)) {
     existing_rows = tryCatch(
       data.table::fread(output_file, data.table = FALSE),
